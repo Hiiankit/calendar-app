@@ -15,7 +15,7 @@ interface Event {
 export default function MainCalendar() {
   const [events, setEvents] = useState<Event[]>([])
   return (
-    <div>
+    <div className="flex p-1 grow h-full">
       <EventList events={events} setEvents={setEvents} />
       <Calendar events={events} setEvents={setEvents} />
     </div>
