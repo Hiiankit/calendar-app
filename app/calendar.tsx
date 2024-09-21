@@ -1,26 +1,49 @@
 "use client"
 
 import React, { useState } from "react"
+import { ArrowLeft, ArrowRight } from "lucide-react"
 
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
 
+import EventList from "./EventList"
 import EventForm from "./Eventform"
+
+// Import the new EventList component
+
+const getDayOfWeek = (dateString: string): string => {
+  const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+  const date = new Date(dateString)
+  const dayIndex = date.getDay()
+  return daysOfWeek[dayIndex]
+}
 
 interface Event {
   id: number
   title: string
-  date: string // Store as "YYYY-MM-DD"
+  date: string
   time: string
   description: string
 }
 
-const Calendar: React.FC = () => {
+interface CalendarProps {
+  events: Event[]
+  setEvents: React.Dispatch<React.SetStateAction<Event[]>>
+}
+
+const currentDate = new Date()
+let sameDay = `${currentDate.getFullYear()}-${String(
+  currentDate.getMonth() + 1
+).padStart(2, "0")}-${String(currentDate.getDate()).padStart(2, "0")}`
+
+const Calendar: React.FC<CalendarProps> = ({ events, setEvents }) => {
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [events, setEvents] = useState<Event[]>([])
+
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [editingEventId, setEditingEventId] = useState<number | null>(null)
   const [eventToEdit, setEventToEdit] = useState<{
@@ -29,13 +52,20 @@ const Calendar: React.FC = () => {
     description: string
   } | null>(null)
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
+  const [showAllEvents, setShowAllEvents] = useState(false)
 
-  const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+  const handleShowMore = () => {
+    setShowAllEvents(true)
+  }
 
   const handlePreviousMonth = () => {
     setCurrentDate(
       new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
     )
+  }
+
+  const handleCurrentMonth = () => {
+    setCurrentDate(new Date())
   }
 
   const handleNextMonth = () => {
@@ -71,29 +101,12 @@ const Calendar: React.FC = () => {
       }
       setSelectedDate(null)
       setEventToEdit(null)
-      setIsPopoverOpen(false) // Close the popover after submission
     }
-  }
-
-  const handleEdit = (event: Event) => {
-    setEditingEventId(event.id)
-    setEventToEdit({
-      title: event.title,
-      time: event.time,
-      description: event.description,
-    })
-    setSelectedDate(event.date)
-    setIsPopoverOpen(true) // Open the popover for editing
-  }
-
-  const handleDelete = (eventId: number) => {
-    setEvents((prevEvents) =>
-      prevEvents.filter((event) => event.id !== eventId)
-    )
   }
 
   const generateCalendar = () => {
     const calendarDays = []
+
     const firstDayOfMonth = new Date(
       currentDate.getFullYear(),
       currentDate.getMonth(),
@@ -110,27 +123,57 @@ const Calendar: React.FC = () => {
       0
     ).getDate()
 
-    for (let i = firstDayOfMonth - 1; i >= 0; i--) {
-      const prevDay = previousMonthDays - i
-      calendarDays.push(
-        <div
-          key={`prev-${prevDay}`}
-          className="h-16 border border-gray-200 relative text-gray-400"
-        >
-          <span className="absolute top-1 left-1 text-sm">{prevDay}</span>
-        </div>
-      )
-    }
+    const nextMonthYear =
+      currentDate.getMonth() === 11
+        ? currentDate.getFullYear() + 1
+        : currentDate.getFullYear()
+    const nextMonth = (currentDate.getMonth() + 1) % 12
+    const prevMonthYear =
+      currentDate.getMonth() === 0
+        ? currentDate.getFullYear() - 1
+        : currentDate.getFullYear()
+    const prevMonth = currentDate.getMonth() === 0 ? 12 : currentDate.getMonth()
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = `${currentDate.getFullYear()}-${String(
-        currentDate.getMonth() + 1
-      ).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+    const totalDays = [
+      ...Array(firstDayOfMonth)
+        .fill(null)
+        .map((_, i) => ({
+          day: previousMonthDays - (firstDayOfMonth - 1) + i,
+          type: "prev",
+          year: prevMonthYear,
+          month: prevMonth,
+        })),
+      ...Array(daysInMonth)
+        .fill(null)
+        .map((_, i) => ({
+          day: i + 1,
+          type: "current",
+          year: currentDate.getFullYear(),
+          month: currentDate.getMonth() + 1,
+        })),
+      ...Array(
+        (firstDayOfMonth + daysInMonth) % 7 !== 0
+          ? 7 - ((firstDayOfMonth + daysInMonth) % 7)
+          : 0
+      )
+        .fill(null)
+        .map((_, i) => ({
+          day: i + 1,
+          type: "next",
+          year: nextMonthYear,
+          month: nextMonth + 1,
+        })),
+    ]
+
+    return totalDays.map(({ day, type, year, month }, index) => {
+      const date = `${year}-${String(month).padStart(2, "0")}-${String(
+        day
+      ).padStart(2, "0")}`
       const dayEvents = events.filter((event) => event.date === date)
 
-      calendarDays.push(
+      return (
         <Popover
-          key={day}
+          key={index}
           open={isPopoverOpen && selectedDate === date}
           onOpenChange={(open) => {
             setIsPopoverOpen(open)
@@ -144,16 +187,51 @@ const Calendar: React.FC = () => {
           }}
         >
           <PopoverTrigger asChild>
-            <div className="h-16 border border-gray-200 relative cursor-pointer">
-              <span className="absolute top-1 left-1 text-sm">{day}</span>
-              {dayEvents.map((event) => (
+            <div className=" p-2  flex flex-col border-t cursor-pointer">
+              <div className="flex font-bold  text-sm w-full justify-between">
                 <div
-                  key={event.id}
-                  className="text-xs bg-blue-200 rounded mx-1 mt-10 px-1"
+                  className={cn(
+                    "  size-8 grid place-items-center  rounded-full ",
+                    type !== "current" && "text-gray-400",
+                    sameDay === date && "bg-black text-white"
+                  )}
                 >
-                  {event.title}
+                  <span>{day}</span>
                 </div>
-              ))}
+                {index < 7 && (
+                  <span className="text-gray-400 size-8 grid place-items-center">
+                    {getDayOfWeek(date)}
+                  </span>
+                )}
+              </div>
+
+              {showAllEvents
+                ? dayEvents.map((event) => (
+                    <div
+                      key={event.id}
+                      className="text-xs bg-blue-200 rounded mx-1 mt-1 px-1"
+                    >
+                      {event.title}
+                    </div>
+                  ))
+                : // Otherwise, show only the first 3 events
+                  dayEvents.slice(0, 3).map((event) => (
+                    <div
+                      key={event.id}
+                      className="text-xs bg-blue-200 rounded mx-1 mt-1 px-1"
+                    >
+                      {event.title}
+                    </div>
+                  ))}
+
+              {!showAllEvents && dayEvents.length > 3 && (
+                <div
+                  className="text-xs text-gray-500 mx-1 mt-1 cursor-pointer"
+                  onClick={handleShowMore} // Handle click to show all events
+                >
+                  +{dayEvents.length - 3} more
+                </div>
+              )}
             </div>
           </PopoverTrigger>
           <PopoverContent>
@@ -166,55 +244,48 @@ const Calendar: React.FC = () => {
           </PopoverContent>
         </Popover>
       )
-    }
-
-    const totalSlots = firstDayOfMonth + daysInMonth
-    const remainingSlots = totalSlots % 7 === 0 ? 0 : 7 - (totalSlots % 7)
-
-    for (let i = 1; i <= remainingSlots; i++) {
-      calendarDays.push(
-        <div
-          key={`next-${i}`}
-          className="h-16 border border-gray-200 relative text-gray-400"
-        >
-          <span className="absolute left-1 text-sm">{i}</span>
-        </div>
-      )
-    }
-
-    return calendarDays
+    })
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <div className="flex items-center justify-between mb-4">
-        <button
-          onClick={handlePreviousMonth}
-          className="p-2 bg-gray-200 rounded"
-        >
-          ←
-        </button>
-        <h2 className="text-xl font-bold">{`${currentDate.toLocaleString(
+    <div className="border rounded-xl w-full flex flex-col">
+      {/* Calendar Header */}
+      <div className="flex p-3 items-center justify-between border-b">
+        <h2 className="text-3xl  font-extrabold">{`${currentDate.toLocaleString(
           "default",
           { month: "long" }
         )} ${currentDate.getFullYear()}`}</h2>
-        <button onClick={handleNextMonth} className="p-2 bg-gray-200 rounded">
-          →
-        </button>
+        <div className="space-x-2 flex ">
+          <Button onClick={handleCurrentMonth} variant="outline">
+            Today
+          </Button>
+          <Button
+            onClick={handlePreviousMonth}
+            className="bg-gray-200 border size-10 border-gray-300 text-gray-700"
+          >
+            <ArrowLeft className="shrink-0" />
+          </Button>
+          <Button
+            onClick={handleNextMonth}
+            className=" bg-gray-200 size-10 border border-gray-300 text-gray-700"
+          >
+            <ArrowRight className="shrink-0" />
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-gray-500 font-medium">
-        {daysOfWeek.map((day) => (
-          <div key={day} className="h-10">
+      <div className="grid grid-cols-7 grow auto-rows-fr [&>*:not(:nth-child(7n))]:border-r ">
+        {/* {daysOfWeek.map((day) => (
+          <div className=" ml-4 fontbo" key={day}>
             {day}
           </div>
-        ))}
+        ))} */}
+
+        {generateCalendar()}
       </div>
 
-      <div className="grid grid-cols-7 gap-1 mt-2">{generateCalendar()}</div>
-
-      {events.length > 0 && (
-        <div className="mt-8">
+      {/* {events.length > 0 && (
+        <div className="mt-8 ">
           <h3 className="font-bold text-lg mb-2">Event List</h3>
           <ul>
             {events.map((event) => (
@@ -247,7 +318,7 @@ const Calendar: React.FC = () => {
             ))}
           </ul>
         </div>
-      )}
+      )} */}
     </div>
   )
 }

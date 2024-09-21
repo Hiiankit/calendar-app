@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from "react"
 
+import { PopoverClose } from "@/components/ui/popover"
+
 // Define the props for EventForm
 interface EventFormProps {
   selectedDate: string
@@ -74,12 +76,14 @@ const EventForm: React.FC<EventFormProps> = ({
         />
       </div>
       <div className="flex justify-end">
-        <button
-          onClick={handleSubmit}
-          className="p-2 bg-blue-500 text-white rounded"
-        >
-          {editingEventId ? "Update Event" : "Add Event"}
-        </button>
+        <PopoverClose asChild>
+          <button
+            onClick={handleSubmit}
+            className="p-2 bg-blue-500 text-white rounded"
+          >
+            {editingEventId ? "Update Event" : "Add Event"}
+          </button>
+        </PopoverClose>
       </div>
     </div>
   )
