@@ -3,6 +3,7 @@
 
 // This enables client-side functionality like state management
 import React, { useState } from "react"
+import { Pencil, Trash2 } from "lucide-react"
 
 interface Event {
   id: number
@@ -72,34 +73,39 @@ const EventList: React.FC<CalendarProps> = ({ events, setEvents }) => {
   }
 
   return (
-    <div>
-      {events.length > 0 && (
+    <div className=" border rounded-xl h-full mx-2 w-fit">
+      {events.length >= 0 && (
         <ul>
           {events.map((event) => (
             <li
               key={event.id}
               className="flex justify-between p-2 border-b border-gray-300"
             >
-              <div>
-                <strong>{event.title}</strong> - {event.date} at {event.time}
-                <br />
-                <span className="text-sm text-gray-500">
+              <div className="space-x-2 p-2 ">
+                <div className="flex h-fit pl-2  space-x-10">
+                  <div className=" text-3xl">
+                    <strong>{event.title}</strong>
+                  </div>
+                  <div className="space-x-2 flex">
+                    <button
+                      onClick={() => handleEdit(event)}
+                      className="text-blue-500 "
+                    >
+                      <Pencil className="size-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(event.id)}
+                      className="text-red-500"
+                    >
+                      <Trash2 className="size-5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="">
+                  <div className="text-sm">{event.date}</div>
                   {event.description}
-                </span>
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => handleEdit(event)}
-                  className="text-blue-500"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(event.id)}
-                  className="text-red-500"
-                >
-                  Delete
-                </button>
+                </div>
               </div>
             </li>
           ))}
