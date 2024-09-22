@@ -2,6 +2,7 @@
 
 import React, { useState } from "react"
 import { ArrowLeft, ArrowRight } from "lucide-react"
+import { signOut, useSession } from "next-auth/react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -42,6 +43,7 @@ let sameDay = `${currentDate.getFullYear()}-${String(
 ).padStart(2, "0")}-${String(currentDate.getDate()).padStart(2, "0")}`
 
 const Calendar: React.FC<CalendarProps> = ({ events, setEvents }) => {
+  const { data } = useSession()
   const [currentDate, setCurrentDate] = useState(new Date())
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
@@ -74,7 +76,7 @@ const Calendar: React.FC<CalendarProps> = ({ events, setEvents }) => {
     )
   }
 
-  const handleSubmit = (formData: {
+  const handleSubmit = async (formData: {
     title: string
     time: string
     description: string
@@ -88,6 +90,18 @@ const Calendar: React.FC<CalendarProps> = ({ events, setEvents }) => {
         )
         setEditingEventId(null)
       } else {
+        const response = await fetch("/api/events", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title: formData.title,
+            date: selectedDate,
+            time: formData.time,
+            description: formData.description,
+          }),
+        })
         setEvents((prevEvents) => [
           ...prevEvents,
           {
@@ -255,7 +269,12 @@ const Calendar: React.FC<CalendarProps> = ({ events, setEvents }) => {
           "default",
           { month: "long" }
         )} ${currentDate.getFullYear()}`}</h2>
-        <div className="space-x-2 flex ">
+
+        <div className="space-x-2 flex items-center ">
+          <Button className="bg-blue-700" onClick={() => signOut()}>
+            Logout
+          </Button>
+          <span>{data?.user?.email}</span>
           <Button onClick={handleCurrentMonth} variant="outline">
             Today
           </Button>
